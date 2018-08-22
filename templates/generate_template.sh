@@ -1,10 +1,7 @@
 #!/bin/bash
 
-#module load NGS_Microbiome
-module load Molgenis-Compute/v17.08.1-Java-1.8.0_74
+module load NGS_Microbiome/1.0.0
 module list
-
-EBROOTNGS_MICROBIOME="/home/umcg-gvdvries/github/NGS_Microbiome/"
 
 ENVIRONMENT=$(hostname -s)
 
@@ -43,7 +40,7 @@ if [[ -z "${group:-}" ]]; then group=$(basename $(cd ../../../ && pwd )) ; fi ; 
 if [[ -z "${workDir:-}" ]]; then workDir="/groups/${group}/${tmpDirectory}" ; fi ; echo "workDir=${workDir}"
 if [[ -z "${filePrefix:-}" ]]; then filePrefix=$(basename $(pwd)) ; fi ; echo "filePrefix=${filePrefix}"
 if [[ -z "${runID:-}" ]]; then runID="run01" ; fi ; echo "runID=${runID}"
-if [[ -z "${samplesheet:-}" ]]; then samplesheet=("${workDir}/generatedscripts/${filePrefix}/") ; fi ; echo "samplesheet=${samplesheet}"
+if [[ -z "${samplesheet:-}" ]]; then samplesheet=("${workDir}/generatedscripts/${filePrefix}/${filePrefix}.csv") ; fi ; echo "samplesheet=${samplesheet}"
 
 genScripts="${workDir}/generatedscripts/${filePrefix}/"
 samplesheet="${genScripts}/${filePrefix}.csv" ; mac2unix "${samplesheet}"
@@ -52,11 +49,10 @@ PROJECT=${filePrefix}
 
 WORKFLOW=${EBROOTNGS_MICROBIOME}/workflow.csv
 
-#exit 0
-perl ${EBROOTNGS_MICROBIOME}/convertParametersGitToMolgenis.pl ${EBROOTNGS_MICROBIOME}/parameters.csv > \
+perl ${EBROOTNGS_MICROBIOME}/scripts/convertParametersGitToMolgenis.pl ${EBROOTNGS_MICROBIOME}/parameters.csv > \
 ${workDir}/generatedscripts/${PROJECT}/parameters.csv
 
-perl ${EBROOTNGS_MICROBIOME}/convertParametersGitToMolgenis.pl ${EBROOTNGS_MICROBIOME}/parameters_${ENVIRONMENT}.csv > \
+perl ${EBROOTNGS_MICROBIOME}/scripts/convertParametersGitToMolgenis.pl ${EBROOTNGS_MICROBIOME}/parameters_${ENVIRONMENT}.csv > \
 ${workDir}/generatedscripts/${PROJECT}/parameters_${ENVIRONMENT}.csv
 
 sh ${EBROOTMOLGENISMINCOMPUTE}/molgenis_compute.sh \
@@ -64,7 +60,17 @@ sh ${EBROOTMOLGENISMINCOMPUTE}/molgenis_compute.sh \
 -p ${workDir}/generatedscripts/${PROJECT}/parameters_${ENVIRONMENT}.csv \
 -p ${workDir}/generatedscripts/${PROJECT}/${PROJECT}.csv \
 -w ${EBROOTNGS_MICROBIOME}/workflow.csv \
--rundir ${workDir}/projects/${PROJECT}/ \
+--header ${EBROOTNGS_MICROBIOME}/templates/slurm/header.ftl \
+--footer ${EBROOTNGS_MICROBIOME}/templates/slurm/footer.ftl \
+--submit ${EBROOTNGS_MICROBIOME}/templates/slurm/submit.ftl \
+-rundir ${workDir}/projects/${PROJECT}/${runID}/jobs/ \
 --runid ${runID} \
 --weave \
---generate 
+-b slurm \
+--generate \
+-o "tmpDirectory=${tmpDirectory};\
+group=${group};\
+workDir=${workDir};\
+filePrefix=${filePrefix};\
+runID=${runID};\
+samplesheet=${samplesheet}"
